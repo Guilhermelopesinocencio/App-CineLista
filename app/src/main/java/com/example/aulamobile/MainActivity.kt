@@ -6,8 +6,8 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import com.example.aulamobile.navigation.AppNav
+import com.example.aulamobile.ui.theme.CineListaTheme
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
         setContent {
-            MaterialTheme {
+            CineListaTheme {
                 AppNav()
             }
         }

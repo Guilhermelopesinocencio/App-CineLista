@@ -9,9 +9,9 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.example.aulamobile" />
-                  <option name="mobileSdkAppId" value="1:221229324485:android:a436259106bb7ea610f8ac" />
-                  <option name="projectId" value="aulamobile-e45e0" />
-                  <option name="projectNumber" value="221229324485" />
+                  <option name="mobileSdkAppId" value="1:680963204510:android:e656cc6a422f5cb618a28f" />
+                  <option name="projectId" value="mangas-chan" />
+                  <option name="projectNumber" value="680963204510" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

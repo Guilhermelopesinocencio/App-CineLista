@@ -1,15 +1,48 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Arquivos gerados pela compilação do aplicativo
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Arquivos da máquina virtual ART/DALVIK
+*.dex
+
+# Arquivos de classes Java
+*.class
+
+# Arquivos gerados
+bin/
+gen/
+out/
+
+# Arquivos do Gradle
+.gradle/
+build/
+app/build/
+captures/
+
+# Arquivos de configuração local (contêm caminhos locais do SDK e a chave da API do TMDB)
 local.properties
+
+# Configuração do Firebase e chaves privadas (dados sensíveis)
+google-services.json
+app/google-services.json
+
+# Arquivos de assinatura
+*.jks
+*.keystore
+signing.properties
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+.kotlin/
+.artifacts/
+
+# Arquivos gerados pela compilação de C/C++
+.externalNativeBuild/
+.cxx/
+
+# Arquivos gerados pelo sistema operacional
+.DS_Store
+Thumbs.db

@@ -1,14 +1,13 @@
 {
   "project_info": {
-    "project_number": "221229324485",
-    "firebase_url": "https://aulamobile-e45e0-default-rtdb.firebaseio.com",
-    "project_id": "aulamobile-e45e0",
-    "storage_bucket": "aulamobile-e45e0.firebasestorage.app"
+    "project_number": "680963204510",
+    "project_id": "mangas-chan",
+    "storage_bucket": "mangas-chan.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:221229324485:android:a436259106bb7ea610f8ac",
+        "mobilesdk_app_id": "1:680963204510:android:e656cc6a422f5cb618a28f",
         "android_client_info": {
           "package_name": "com.example.aulamobile"
         }
@@ -16,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCdISevN73YiLTgCV7bT64X_hX7jHaAk-4"
+          "current_key": "AIzaSyB9aiKyF804HZWc8w7hyHYvFIJywngXqZo"
         }
       ],
       "services": {

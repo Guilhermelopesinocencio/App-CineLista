@@ -1,9 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 
     id("com.google.gms.google-services")
 }
+
+val props = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}
+val tmdbKey = props.getProperty("TMDB_KEY") ?: ""
 
 android {
     namespace = "com.example.aulamobile"
@@ -19,6 +27,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "TMDB_KEY", "\"$tmdbKey\"")
     }
 
     buildTypes {
@@ -34,6 +43,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -54,21 +64,24 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
-    debugImplementation(libs.androidx.material.icons.exetended) // biblioteca dos icones do material design
-    implementation("androidx.navigation:navigation-compose:2.8.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.3")
+    implementation(libs.androidx.material.icons.exetended)
+    implementation("androidx.navigation:navigation-compose:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
-    // Import the Firebase BoM
+    // Retrofit & Gson
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+
+    // Coil Compose
+    implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Coroutines Play Services
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+
+    // Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
-
-    // When using the BoM, you don't specify versions in Firebase library dependencies
-
-    // Add the dependency for the Firebase SDK for Google Analytics
     implementation("com.google.firebase:firebase-analytics")
-
-    // TODO: Add the dependencies for any other Firebase products you want to use
-    // See https://firebase.google.com/docs/android/setup#available-libraries
-    // For example, add the dependencies for Firebase Authentication and Cloud Firestore
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database")
+    implementation("com.google.firebase:firebase-firestore")
 }

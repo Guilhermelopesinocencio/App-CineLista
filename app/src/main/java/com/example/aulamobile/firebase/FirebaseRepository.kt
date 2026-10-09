@@ -1,59 +1,50 @@
-package com.example.aulatelas.firebase
+package com.example.aulamobile.firebase
 
-import androidx.compose.runtime.mutableStateListOf
-import com.google.firebase.Firebase
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.database
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.tasks.await
 
-data class Car(
-    val id: String = "",
-    val name: String = "",
-)
+class FirebaseRepository {
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
 
-object FirebaseRepository {
-    private val database =
-        Firebase.database("https://aulamobile-e45e0-default-rtdb.firebaseio.com/")
-            .getReference("carros")
+    private fun authState(): Flow<String?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { trySend(it.currentUser?.uid) }
+        auth.addAuthStateListener(listener)
+        awaitClose { auth.removeAuthStateListener(listener) }
+    }
 
-    val cars = mutableStateListOf<Car>()
-
-    init {
-        getCars {
-            cars.clear()
-            cars.addAll(it)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observeSaved(): Flow<List<SavedMovie>> = authState().flatMapLatest { uid ->
+        if (uid == null) flowOf(emptyList())
+        else callbackFlow {
+            val reg = db.collection("users").document(uid).collection("movies")
+                .addSnapshotListener { snap, err ->
+                    if (err != null) { close(err); return@addSnapshotListener }
+                    trySend(snap?.toObjects(SavedMovie::class.java).orEmpty())
+                }
+            awaitClose { reg.remove() }
         }
     }
 
-    fun createCar(car: Car) {
-        val id = database.push().key!!
-        database.child(id).setValue(car.copy(id = id))
+    private fun col() = db.collection("users")
+        .document(auth.currentUser!!.uid).collection("movies")
 
+    suspend fun save(m: SavedMovie) {
+        if (auth.currentUser != null) {
+            col().document(m.id.toString()).set(m).await()
+        }
     }
 
-    fun editCar(car: Car) {
-        database.child(car.id).setValue(car)
-    }
-
-    fun deleteCar(car: Car) {
-        database.child(car.id).removeValue()
-    }
-
-    fun getCars(onDataChange: (List<Car>) -> Unit) {
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val carsList = mutableListOf<Car>()
-                snapshot.children.forEach {
-                    it.getValue(Car::class.java)?.let { car -> carsList.add(car) }
-
-                }
-                onDataChange(carsList)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-
-            }
-        })
+    suspend fun remove(id: Int) {
+        if (auth.currentUser != null) {
+            col().document(id.toString()).delete().await()
+        }
     }
 }
