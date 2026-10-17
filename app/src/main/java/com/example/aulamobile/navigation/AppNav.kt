@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -25,20 +25,27 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.aulamobile.auth.AuthViewModel
 import com.example.aulamobile.screens.DetailScreen
+import com.example.aulamobile.screens.FilmesScreen
 import com.example.aulamobile.screens.HomeScreen
 import com.example.aulamobile.screens.LoginGateScreen
 import com.example.aulamobile.screens.MovieViewModel
-import com.example.aulamobile.screens.MyListScreen
-import com.example.aulamobile.screens.NotificationsScreen
 import com.example.aulamobile.screens.ProfileScreen
 import com.example.aulamobile.screens.ReviewScreen
+import com.example.aulamobile.screens.SeriesScreen
 import com.example.aulamobile.ui.theme.CineBackground
 import com.example.aulamobile.ui.theme.CineGold
 import com.example.aulamobile.ui.theme.CineTextSecondary
 
+/**
+ * Composable de navegação principal da aplicação.
+ * Controla o estado de autenticação (exibindo a tela de bloqueio se não houver usuário)
+ * e configura o [NavHost] com a barra de navegação inferior (`NavigationBar`).
+ */
 @Composable
 fun AppNav(authViewModel: AuthViewModel = viewModel()) {
     val authState by authViewModel.state.collectAsState()
+
+    // Bloqueia o acesso se o usuário não estiver autenticado no Firebase
     if (authState.user == null) {
         LoginGateScreen(authViewModel)
         return
@@ -46,24 +53,27 @@ fun AppNav(authViewModel: AuthViewModel = viewModel()) {
 
     val nav = rememberNavController()
     val movieVm: MovieViewModel = viewModel()
-    val current = nav.currentBackStackEntryAsState().value?.destination?.route
+    val currentRoute = nav.currentBackStackEntryAsState().value?.destination?.route
 
+    // Abas de navegação da barra inferior
     val tabs = listOf(
         Triple(Screen.Home.route, "Início", Icons.Default.Home),
         Triple(Screen.MyList.route, "Filmes", Icons.Default.Movie),
-        Triple(Screen.Notifications.route, "Notificações", Icons.Default.Notifications),
+        Triple(Screen.Series.route, "Séries", Icons.Default.Tv),
         Triple(Screen.Profile.route, "Perfil", Icons.Default.Person)
     )
-    val idArg = listOf(navArgument("id") { type = NavType.IntType })
+
+    val idArgs = listOf(navArgument("id") { type = NavType.IntType })
 
     Scaffold(
         containerColor = CineBackground,
         bottomBar = {
-            if (current in tabs.map { it.first }) {
+            // Exibe a barra de navegação apenas se a rota atual for uma das abas principais
+            if (currentRoute in tabs.map { it.first }) {
                 NavigationBar(containerColor = CineBackground) {
                     tabs.forEach { (route, label, icon) ->
                         NavigationBarItem(
-                            selected = current == route,
+                            selected = currentRoute == route,
                             onClick = {
                                 nav.navigate(route) {
                                     popUpTo(Screen.Home.route) { saveState = true }
@@ -91,28 +101,56 @@ fun AppNav(authViewModel: AuthViewModel = viewModel()) {
             startDestination = Screen.Home.route,
             modifier = Modifier.padding(padding)
         ) {
+            // Rota: Tela Inicial
             composable(Screen.Home.route) {
-                HomeScreen(movieVm) { id -> nav.navigate(Screen.Detail.go(id)) }
+                HomeScreen(
+                    vm = movieVm,
+                    onMovie = { id -> nav.navigate(Screen.MovieDetail.go(id)) },
+                    onSeries = { id -> nav.navigate(Screen.TvDetail.go(id)) }
+                )
             }
-            composable(Screen.Detail.route, arguments = idArg) { backStack ->
+
+            // Rota: Detalhes do Filme
+            composable(Screen.MovieDetail.route, arguments = idArgs) { backStack ->
                 val id = backStack.arguments!!.getInt("id")
                 DetailScreen(
                     vm = movieVm,
                     id = id,
+                    isSeries = false,
                     onBack = { nav.popBackStack() },
                     onReview = { nav.navigate(Screen.Review.go(id)) }
                 )
             }
+
+            // Rota: Detalhes da Série
+            composable(Screen.TvDetail.route, arguments = idArgs) { backStack ->
+                val id = backStack.arguments!!.getInt("id")
+                DetailScreen(
+                    vm = movieVm,
+                    id = id,
+                    isSeries = true,
+                    onBack = { nav.popBackStack() },
+                    onReview = { nav.navigate(Screen.Review.go(id)) }
+                )
+            }
+
+            // Rota: Lista Pessoal de Filmes
             composable(Screen.MyList.route) {
-                MyListScreen(movieVm) { id -> nav.navigate(Screen.Detail.go(id)) }
+                FilmesScreen(movieVm) { id -> nav.navigate(Screen.MovieDetail.go(id)) }
             }
-            composable(Screen.Notifications.route) {
-                NotificationsScreen(movieVm) { id -> nav.navigate(Screen.Detail.go(id)) }
+
+            // Rota: Lista Pessoal de Séries
+            composable(Screen.Series.route) {
+                SeriesScreen(movieVm) { id -> nav.navigate(Screen.TvDetail.go(id)) }
             }
-            composable(Screen.Review.route, arguments = idArg) { backStack ->
+
+            // Rota: Avaliar e Editar Status
+            composable(Screen.Review.route, arguments = idArgs) { backStack ->
                 val id = backStack.arguments!!.getInt("id")
                 ReviewScreen(movieVm, id) { nav.popBackStack() }
             }
+
+            // Rota: Perfil do Usuário
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     vm = movieVm,

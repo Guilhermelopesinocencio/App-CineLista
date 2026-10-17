@@ -58,9 +58,17 @@ private val genreChipColors = listOf(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DetailScreen(vm: MovieViewModel, id: Int, onBack: () -> Unit, onReview: () -> Unit) {
-    LaunchedEffect(id) { vm.loadDetail(id) }
+fun DetailScreen(
+    vm: MovieViewModel,
+    id: Int,
+    isSeries: Boolean,
+    onBack: () -> Unit,
+    onReview: () -> Unit
+) {
+    LaunchedEffect(id, isSeries) { vm.loadDetail(id, isSeries) }
+
     val movie = vm.selected?.takeIf { it.id == id }
+    val tvShow = vm.selectedTv?.takeIf { it.id == id }
     val list by vm.myList.collectAsState()
     val saved = list.find { it.id == id }
 
@@ -69,14 +77,20 @@ fun DetailScreen(vm: MovieViewModel, id: Int, onBack: () -> Unit, onReview: () -
             .fillMaxSize()
             .background(CineBackground)
     ) {
-        if (movie == null) {
+        if (movie == null && tvShow == null) {
             CircularProgressIndicator(
                 color = CineGold,
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
-            val year = movie.release_date?.take(4).orEmpty()
-            val ratingText = movie.vote_average?.let { "%.1f".format(it).replace('.', ',') } ?: "—"
+            val title = if (isSeries) (tvShow?.name ?: movie?.title.orEmpty()) else (movie?.title ?: tvShow?.name.orEmpty())
+            val posterPath = if (isSeries) (tvShow?.poster_path ?: movie?.poster_path) else (movie?.poster_path ?: tvShow?.poster_path)
+            val dateStr = if (isSeries) (tvShow?.first_air_date ?: movie?.release_date) else (movie?.release_date ?: tvShow?.first_air_date)
+            val year = dateStr?.take(4).orEmpty()
+            val rating = if (isSeries) (tvShow?.vote_average ?: movie?.vote_average) else (movie?.vote_average ?: tvShow?.vote_average)
+            val ratingText = rating?.let { "%.1f".format(it).replace('.', ',') } ?: "—"
+            val overview = if (isSeries) (tvShow?.overview ?: movie?.overview) else (movie?.overview ?: tvShow?.overview)
+            val genres = if (isSeries) (tvShow?.genres ?: movie?.genres) else (movie?.genres ?: tvShow?.genres)
 
             Column(
                 modifier = Modifier
@@ -97,8 +111,8 @@ fun DetailScreen(vm: MovieViewModel, id: Int, onBack: () -> Unit, onReview: () -
 
                 Row(modifier = Modifier.fillMaxWidth()) {
                     AsyncImage(
-                        model = movie.poster_path?.let { "https://image.tmdb.org/t/p/w342$it" },
-                        contentDescription = movie.title,
+                        model = posterPath?.let { "https://image.tmdb.org/t/p/w342$it" },
+                        contentDescription = title,
                         modifier = Modifier
                             .width(130.dp)
                             .height(195.dp)
@@ -111,7 +125,7 @@ fun DetailScreen(vm: MovieViewModel, id: Int, onBack: () -> Unit, onReview: () -
                             .padding(start = 16.dp, top = 8.dp)
                     ) {
                         Text(
-                            text = movie.title,
+                            text = title,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = CineTextPrimary
@@ -165,7 +179,7 @@ fun DetailScreen(vm: MovieViewModel, id: Int, onBack: () -> Unit, onReview: () -
 
                     if (saved == null) {
                         Button(
-                            onClick = { vm.saveMovie(movie) },
+                            onClick = { vm.saveItem(id = id, isSeries = isSeries) },
                             modifier = Modifier
                                 .weight(0.65f)
                                 .height(72.dp),
@@ -176,7 +190,7 @@ fun DetailScreen(vm: MovieViewModel, id: Int, onBack: () -> Unit, onReview: () -
                             )
                         ) {
                             Text(
-                                "Adicionar à lista",
+                                text = if (isSeries) "Adicionar à lista de séries" else "Adicionar à lista de filmes",
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleSmall
                             )
@@ -204,19 +218,19 @@ fun DetailScreen(vm: MovieViewModel, id: Int, onBack: () -> Unit, onReview: () -
                                 onClick = onReview,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Avaliar filme", color = CineGold)
+                                Text("Avaliar / Editar", color = CineGold)
                             }
                         }
                     }
                 }
 
-                if (!movie.genres.isNullOrEmpty()) {
+                if (!genres.isNullOrEmpty()) {
                     Spacer(Modifier.height(20.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        movie.genres.forEachIndexed { index, genre ->
+                        genres.forEachIndexed { index, genre ->
                             Surface(
                                 shape = RoundedCornerShape(20.dp),
                                 color = genreChipColors[index % genreChipColors.size]
@@ -241,7 +255,7 @@ fun DetailScreen(vm: MovieViewModel, id: Int, onBack: () -> Unit, onReview: () -
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = movie.overview?.takeIf { it.isNotBlank() } ?: "Sem sinopse disponível.",
+                    text = overview?.takeIf { it.isNotBlank() } ?: "Sem sinopse disponível.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = CineTextSecondary,
                     lineHeight = MaterialTheme.typography.bodyMedium.lineHeight

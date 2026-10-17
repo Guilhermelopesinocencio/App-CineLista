@@ -53,6 +53,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.aulamobile.auth.AuthViewModel
+import com.example.aulamobile.components.AuthDialogs
+import com.example.aulamobile.components.AuthModalMode
 import com.example.aulamobile.ui.theme.CineBackground
 import com.example.aulamobile.ui.theme.CineBorder
 import com.example.aulamobile.ui.theme.CineCardBg
@@ -87,23 +89,38 @@ fun ProfileScreen(
         vm.ensureRuntimesFetched(list)
     }
 
-    val watched = list.filter { it.status == "ASSISTIDO" || it.status == "REASSISTIDO" }
-    val totalWatchedMinutes = watched.sumOf { it.runtime }
-    val watchedHoursText = remember(totalWatchedMinutes) {
-        if (totalWatchedMinutes <= 0) "0h"
+    // Movies stats
+    val movieList = list.filter { !it.isSeries }
+    val watchedMovies = movieList.filter { it.status == "ASSISTIDO" || it.status == "REASSISTIDO" }
+    val movieMinutes = watchedMovies.sumOf { it.runtime }
+    val watchedMovieHoursText = remember(movieMinutes) {
+        if (movieMinutes <= 0) "0h"
         else {
-            val h = totalWatchedMinutes / 60
-            val m = totalWatchedMinutes % 60
+            val h = movieMinutes / 60
+            val m = movieMinutes % 60
             if (h == 0) "${m}m"
             else if (m == 0) "${h}h"
             else "${h}h ${m}m"
         }
     }
+    val movieRatings = watchedMovies.filter { it.rating > 0 }.map { it.rating }
+    val avgMovieRatingText = if (movieRatings.isEmpty()) "0" else "%.1f".format(movieRatings.average()).replace('.', ',')
 
-    val rated = watched.filter { it.rating > 0 }.map { it.rating }
-    val avg = if (rated.isEmpty()) 0.0 else rated.average()
-    val favorites = list.count { it.favorite || it.status == "FAVORITOS" }
-    val rewatched = list.count { it.status == "REASSISTIDO" }
+    // Series stats
+    val seriesList = list.filter { it.isSeries }
+    val watchedSeries = seriesList.filter { it.status == "ASSISTIDO" || it.status == "REASSISTIDO" }
+    val seriesMinutes = watchedSeries.sumOf { it.runtime }
+    val watchedSeriesDaysText = remember(seriesMinutes) {
+        if (seriesMinutes <= 0) "0 dias"
+        else {
+            val totalHours = seriesMinutes / 60f
+            val days = totalHours / 24f
+            if (days < 0.1f) "${totalHours.toInt()}h"
+            else "%.1f dias".format(days).replace('.', ',')
+        }
+    }
+    val seriesRatings = watchedSeries.filter { it.rating > 0 }.map { it.rating }
+    val avgSeriesRatingText = if (seriesRatings.isEmpty()) "0" else "%.1f".format(seriesRatings.average()).replace('.', ',')
 
     val displayName = profile.name.ifBlank {
         user?.displayName?.takeIf { it.isNotBlank() }
@@ -210,12 +227,14 @@ fun ProfileScreen(
 
         // Stats Section
         SectionTitle("Estatísticas")
-        StatRow("Total de filmes na lista", list.size.toString())
-        StatRow("Filmes assistidos", watched.size.toString())
-        StatRow("Horas Assistidas", watchedHoursText)
-        StatRow("Nota média", if (avg > 0) "%.1f".format(avg).replace('.', ',') else "0")
-        StatRow("Filmes favoritos", favorites.toString())
-        StatRow("Filmes reassistidos", rewatched.toString())
+        StatRow("Total de filmes", movieList.size.toString())
+        StatRow("Filmes Assistidos", watchedMovies.size.toString())
+        StatRow("Horas assistidas", watchedMovieHoursText)
+        StatRow("Nota media filme", avgMovieRatingText)
+        StatRow("Total de Series", seriesList.size.toString())
+        StatRow("Series Assistidas", watchedSeries.size.toString())
+        StatRow("Dias assistidas", watchedSeriesDaysText)
+        StatRow("Nota Media Serie", avgSeriesRatingText)
 
         Spacer(Modifier.height(32.dp))
 

@@ -26,8 +26,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -50,7 +48,6 @@ import com.example.aulamobile.ui.theme.CineBorder
 import com.example.aulamobile.ui.theme.CineGold
 import com.example.aulamobile.ui.theme.CineSurface
 import com.example.aulamobile.ui.theme.CineTextPrimary
-import com.example.aulamobile.ui.theme.CineTextSecondary
 
 private val statusOptions = listOf(
     "ASSISTINDO" to "Assistindo",
@@ -74,7 +71,6 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
         )
     }
     var rating by remember(movie.id) { mutableFloatStateOf(movie.rating) }
-    var comment by remember(movie.id) { mutableStateOf(movie.comment) }
 
     Box(
         modifier = Modifier
@@ -191,31 +187,13 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
                 )
             }
 
-            // Comment Section
-            OutlinedTextField(
-                value = comment,
-                onValueChange = { comment = it },
-                label = { Text("Comentário ou anotações", color = CineTextSecondary) },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = CineGold,
-                    unfocusedBorderColor = CineBorder,
-                    focusedTextColor = CineTextPrimary,
-                    unfocusedTextColor = CineTextPrimary,
-                    focusedContainerColor = CineSurface,
-                    unfocusedContainerColor = CineSurface
-                )
-            )
-
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = {
                     vm.saveReview(
                         movie.copy(
                             rating = rating,
-                            comment = comment,
                             status = selectedStatus,
                             favorite = (selectedStatus == "FAVORITOS")
                         )

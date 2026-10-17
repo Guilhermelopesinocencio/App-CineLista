@@ -10,41 +10,65 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.tasks.await
 
+/**
+ * Repositório responsável pelo acesso e sincronização de dados no Firebase Firestore
+ * para a lista pessoal de filmes e séries salvas do usuário autenticado.
+ */
 class FirebaseRepository {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
+    /**
+     * Emite um Flow com o UID do usuário atual sempre que o estado da autenticação mudar.
+     */
     private fun authState(): Flow<String?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { trySend(it.currentUser?.uid) }
         auth.addAuthStateListener(listener)
         awaitClose { auth.removeAuthStateListener(listener) }
     }
 
+    /**
+     * Observa em tempo real a coleção de filmes e séries salvos na conta do usuário atual no Firestore.
+     * Retorna um [Flow] contendo a lista atualizada de [SavedMovie].
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observeSaved(): Flow<List<SavedMovie>> = authState().flatMapLatest { uid ->
-        if (uid == null) flowOf(emptyList())
-        else callbackFlow {
-            val reg = db.collection("users").document(uid).collection("movies")
-                .addSnapshotListener { snap, err ->
-                    if (err != null) { close(err); return@addSnapshotListener }
-                    trySend(snap?.toObjects(SavedMovie::class.java).orEmpty())
-                }
-            awaitClose { reg.remove() }
+        if (uid == null) {
+            flowOf(emptyList())
+        } else {
+            callbackFlow {
+                val reg = db.collection("users").document(uid).collection("movies")
+                    .addSnapshotListener { snap, err ->
+                        if (err != null) {
+                            close(err)
+                            return@addSnapshotListener
+                        }
+                        trySend(snap?.toObjects(SavedMovie::class.java).orEmpty())
+                    }
+                awaitClose { reg.remove() }
+            }
         }
     }
 
-    private fun col() = db.collection("users")
+    /** Referência para a coleção do Firestore do usuário autenticado. */
+    private fun userMoviesCollection() = db.collection("users")
         .document(auth.currentUser!!.uid).collection("movies")
 
+    /**
+     * Salva ou atualiza um filme/série na coleção pessoal do usuário no Firestore.
+     */
     suspend fun save(m: SavedMovie) {
         if (auth.currentUser != null) {
-            col().document(m.id.toString()).set(m).await()
+            userMoviesCollection().document(m.id.toString()).set(m).await()
         }
     }
 
+    /**
+     * Remove um filme/série da coleção pessoal do usuário no Firestore pelo seu ID.
+     */
     suspend fun remove(id: Int) {
         if (auth.currentUser != null) {
-            col().document(id.toString()).delete().await()
+            userMoviesCollection().document(id.toString()).delete().await()
         }
     }
 }

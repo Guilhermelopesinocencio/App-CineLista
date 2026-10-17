@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -42,21 +43,29 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.aulamobile.auth.AuthViewModel
 import com.example.aulamobile.components.MovieListRow
 import com.example.aulamobile.components.MoviePosterCard
 import com.example.aulamobile.ui.theme.CineBackground
+import com.example.aulamobile.ui.theme.CineBorder
 import com.example.aulamobile.ui.theme.CineGold
 import com.example.aulamobile.ui.theme.CineTextPrimary
 import com.example.aulamobile.ui.theme.CineTextSecondary
 
+/**
+ * Tela Inicial do aplicativo CineLista.
+ * Exibe saudação com foto de perfil, campo de busca rápido e carrosséis horizontais
+ * organizados por Filmes e Séries de TV por gênero.
+ */
 @Composable
 fun HomeScreen(
     vm: MovieViewModel,
     authViewModel: AuthViewModel = viewModel(),
-    onMovie: (Int) -> Unit
+    onMovie: (Int) -> Unit,
+    onSeries: (Int) -> Unit = onMovie
 ) {
     var query by remember { mutableStateOf("") }
     val authState by authViewModel.state.collectAsState()
@@ -78,6 +87,8 @@ fun HomeScreen(
             .padding(horizontal = 16.dp)
     ) {
         Spacer(Modifier.height(12.dp))
+        
+        // Cabeçalho com nome e avatar do usuário
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -110,7 +121,10 @@ fun HomeScreen(
                 }
             }
         }
+
         Spacer(Modifier.height(16.dp))
+
+        // Campo de busca rápido por título
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
@@ -132,14 +146,18 @@ fun HomeScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { vm.search(query) })
         )
+
         Spacer(Modifier.height(8.dp))
+
         if (vm.loading) {
             LinearProgressIndicator(Modifier.fillMaxWidth(), color = CineGold)
         }
+
         vm.error?.let {
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 8.dp))
         }
 
+        // Resultados da Busca
         if (query.isNotBlank() && vm.results.isNotEmpty()) {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -157,10 +175,11 @@ fun HomeScreen(
             }
         } else if (query.isNotBlank() && !vm.loading && vm.results.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Nenhum filme encontrado", color = CineTextSecondary)
+                Text("Nenhum resultado encontrado", color = CineTextSecondary)
             }
         } else {
-            if (vm.genreSections.isEmpty() && vm.loading) {
+            // Seções em carrosséis por Categoria (Filmes e Séries)
+            if (vm.genreSections.isEmpty() && vm.genreSectionsTv.isEmpty() && vm.loading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = CineGold)
                 }
@@ -169,15 +188,18 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
+                    // === SEÇÃO 1: FILMES ===
                     item {
                         Text(
-                            text = "Filmes Populares",
-                            style = MaterialTheme.typography.titleLarge,
+                            text = "Filmes",
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = CineTextPrimary
+                            color = CineGold,
+                            fontSize = 24.sp
                         )
                     }
-                    items(vm.genreSections, key = { it.title }) { section ->
+
+                    items(vm.genreSections, key = { "movie_sec_${it.title}" }) { section ->
                         Text(
                             text = section.title,
                             style = MaterialTheme.typography.titleMedium,
@@ -186,11 +208,49 @@ fun HomeScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(section.movies, key = { it.id }) { movie ->
+                            items(section.movies, key = { "movie_${it.id}" }) { movie ->
                                 MoviePosterCard(
                                     title = movie.title,
                                     posterPath = movie.poster_path,
                                     onClick = { onMovie(movie.id) }
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        HorizontalDivider(
+                            color = CineBorder,
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
+                    }
+
+                    // === SEÇÃO 2: SÉRIES ===
+                    item {
+                        Text(
+                            text = "Séries",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = CineGold,
+                            fontSize = 24.sp
+                        )
+                    }
+
+                    items(vm.genreSectionsTv, key = { "tv_sec_${it.title}" }) { section ->
+                        Text(
+                            text = section.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = CineTextPrimary
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(section.shows, key = { "tv_${it.id}" }) { show ->
+                                MoviePosterCard(
+                                    title = show.name,
+                                    posterPath = show.poster_path,
+                                    onClick = { onSeries(show.id) }
                                 )
                             }
                         }

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,11 +31,13 @@ import com.example.aulamobile.ui.theme.CineListaTheme
 import com.example.aulamobile.ui.theme.CineTextPrimary
 import com.example.aulamobile.ui.theme.CineTextSecondary
 
+/** Especificação de uma categoria de status de filme. */
 data class CategorySpec(
     val key: String,
     val label: String
 )
 
+/** Lista das 7 categorias organizacionais do catálogo de filmes do usuário. */
 val categories = listOf(
     CategorySpec("ASSISTINDO", "Assistindo"),
     CategorySpec("REASSISTINDO", "Reassistindo"),
@@ -47,16 +48,29 @@ val categories = listOf(
     CategorySpec("FAVORITOS", "Favoritos")
 )
 
+/**
+ * Tela principal da Lista Pessoal de Filmes do Usuário.
+ * Filtra e exibe apenas os itens onde [SavedMovie.isSeries] é `false`.
+ */
 @Composable
-fun MyListScreen(vm: MovieViewModel, onMovie: (Int) -> Unit) {
+fun FilmesScreen(vm: MovieViewModel, onMovie: (Int) -> Unit) {
     val list by vm.myList.collectAsState()
-    MyListScreenContent(list = list, onMovie = onMovie)
+    val movieList = list.filter { !it.isSeries }
+    FilmesScreenContent(
+        list = movieList,
+        onMovie = onMovie,
+        onDelete = { id -> vm.remove(id) }
+    )
 }
 
+/**
+ * Conteúdo visual da Lista de Filmes dividida por categorias.
+ */
 @Composable
-fun MyListScreenContent(
+fun FilmesScreenContent(
     list: List<SavedMovie>,
-    onMovie: (Int) -> Unit
+    onMovie: (Int) -> Unit,
+    onDelete: ((Int) -> Unit)? = null
 ) {
     Column(
         Modifier
@@ -115,7 +129,8 @@ fun MyListScreenContent(
                                     else "%.1f".format(m.rating).replace('.', ',')
                                 } else null,
                                 posterPath = m.posterPath,
-                                onClick = { onMovie(m.id) }
+                                onClick = { onMovie(m.id) },
+                                onDelete = onDelete?.let { { it(m.id) } }
                             )
                         }
 
@@ -133,6 +148,7 @@ fun MyListScreenContent(
     }
 }
 
+/** Verifica se um filme pertence à categoria do filtro. */
 private fun matchesCategory(movie: SavedMovie, categoryKey: String): Boolean = when (categoryKey) {
     "ASSISTINDO" -> movie.status == "ASSISTINDO"
     "REASSISTINDO" -> movie.status == "REASSISTINDO"
@@ -144,6 +160,7 @@ private fun matchesCategory(movie: SavedMovie, categoryKey: String): Boolean = w
     else -> false
 }
 
+/** Formata o subtítulo com o ano do filme. */
 private fun subtitleFor(m: SavedMovie): String {
     val year = m.overview?.take(4).orEmpty()
     return if (year.matches(Regex("\\d{4}"))) year else "Filme · —"
