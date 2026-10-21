@@ -4,6 +4,9 @@ import com.google.firebase.firestore.PropertyName
 
 /**
  * Modelo de dados representando um filme ou série salvo na coleção do Firebase Firestore do usuário.
+ * É o objeto gravado/lido em users/{uid}/movies pelo FirebaseRepository.
+ * Todos os campos têm valor padrão, o que permite ao Firestore criar o objeto
+ * automaticamente a partir do documento (toObjects).
  */
 data class SavedMovie(
     val id: Int = 0,

@@ -4,6 +4,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
+/**
+ * Esquema de cores escuro do CineLista, que liga a paleta personalizada (Color.kt)
+ * aos "papéis" de cor do Material 3. Os componentes do Material (Button, Card, Text etc.)
+ * usam esses papéis automaticamente quando não recebem uma cor explícita.
+ */
 private val CineListaDarkColorScheme = darkColorScheme(
     primary = CineOrange,
     onPrimary = CineTextPrimary,
@@ -18,6 +23,10 @@ private val CineListaDarkColorScheme = darkColorScheme(
     outline = CineBorder
 )
 
+/**
+ * Tema principal do aplicativo. Deve envolver todo o conteúdo (normalmente na MainActivity)
+ * para que as cores e a tipografia sejam aplicadas em todas as telas.
+ */
 @Composable
 fun CineListaTheme(
     darkTheme: Boolean = true,

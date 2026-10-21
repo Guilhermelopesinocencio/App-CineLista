@@ -43,6 +43,11 @@ import com.example.aulamobile.ui.theme.CineTextPrimary
 import com.example.aulamobile.ui.theme.CineTextSecondary
 import com.google.firebase.auth.FirebaseUser
 
+/**
+ * Menu lateral (drawer) de perfil que desliza pelo lado direito da tela.
+ * Mostra avatar, nome, e-mail, botão de sair da conta, uma opção de tema e a versão do app.
+ * Quando aberto, escurece o restante da tela; tocar na área escura fecha o menu.
+ */
 @Composable
 fun ProfileSideDrawer(
     isOpen: Boolean,
@@ -53,11 +58,13 @@ fun ProfileSideDrawer(
     onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Só desenha algo se o drawer estiver aberto
     if (isOpen) {
+        // Caixa que cobre a tela inteira e empilha o fundo escuro e o painel
         Box(
             modifier = modifier.fillMaxSize()
         ) {
-            // Dimmed background overlay
+            // Fundo escurecido (overlay): clicar nele fecha o drawer
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -65,7 +72,7 @@ fun ProfileSideDrawer(
                     .clickable { onDismiss() }
             )
 
-            // Right-side Drawer Panel
+            // Painel lateral de 300dp de largura, alinhado à direita e com altura total
             Surface(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -74,6 +81,7 @@ fun ProfileSideDrawer(
                 color = CineSurface,
                 tonalElevation = 16.dp
             ) {
+                // Coluna principal: conteúdo no topo e rodapé (versão) na parte de baixo
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -81,13 +89,14 @@ fun ProfileSideDrawer(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
+                    // Bloco superior: avatar, dados do usuário, botão de sair e opções
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Spacer(Modifier.height(32.dp))
 
-                        // Avatar Circle
+                        // Avatar circular com borda laranja e ícone de pessoa (foto não é usada aqui)
                         Box(
                             modifier = Modifier
                                 .size(80.dp)
@@ -106,13 +115,15 @@ fun ProfileSideDrawer(
 
                         Spacer(Modifier.height(16.dp))
 
-                        // User Info
+                        // Nome exibido: displayName se houver; senão a parte do e-mail antes do "@";
+                        // se nada existir, mostra "Usuário"
                         Text(
                             text = user?.displayName?.takeIf { it.isNotBlank() } ?: user?.email?.substringBefore('@') ?: "Usuário",
                             color = CineTextPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
+                        // E-mail do usuário (texto vazio se não houver usuário)
                         Text(
                             text = user?.email.orEmpty(),
                             color = CineTextSecondary,
@@ -121,6 +132,7 @@ fun ProfileSideDrawer(
 
                         Spacer(Modifier.height(24.dp))
 
+                        // Botão que encerra a sessão do usuário
                         Button(
                             onClick = onLogoutClick,
                             colors = ButtonDefaults.buttonColors(containerColor = CineOrange),
@@ -137,10 +149,12 @@ fun ProfileSideDrawer(
                         }
 
                         Spacer(Modifier.height(32.dp))
+                        // Linha divisória entre o botão e as opções
                         HorizontalDivider(color = CineBorder, thickness = 1.dp)
                         Spacer(Modifier.height(20.dp))
 
-                        // Theme Option
+                        // Opção "Tema": por enquanto é apenas visual (o clique ainda não faz nada)
+                        // e mostra o valor atual fixo "Sistema"
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -149,6 +163,7 @@ fun ProfileSideDrawer(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            // Lado esquerdo: ícone de paleta + rótulo "Tema"
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = Icons.Outlined.ColorLens,
@@ -165,6 +180,7 @@ fun ProfileSideDrawer(
                                 )
                             }
 
+                            // Lado direito: valor atual ("Sistema") + seta indicando que é navegável
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = "Sistema",
@@ -181,7 +197,7 @@ fun ProfileSideDrawer(
                         }
                     }
 
-                    // Footer
+                    // Rodapé com a versão do aplicativo, centralizado na parte de baixo
                     Text(
                         text = "CineLista V1.0.0",
                         color = CineTextSecondary,

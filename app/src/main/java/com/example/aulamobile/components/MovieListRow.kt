@@ -30,6 +30,11 @@ import coil.compose.AsyncImage
 import com.example.aulamobile.ui.theme.CineGold
 import com.example.aulamobile.ui.theme.CineSurface
 
+/**
+ * Linha de lista que representa um filme (usada em listas como "favoritos" ou "assistidos").
+ * Mostra o pôster à esquerda, o título, o subtítulo e a nota ao centro e,
+ * opcionalmente, um botão de excluir à direita. O cartão inteiro é clicável.
+ */
 @Composable
 fun MovieListRow(
     title: String,
@@ -40,6 +45,7 @@ fun MovieListRow(
     onDelete: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    // Cartão com cor de fundo e cantos arredondados do tema, ocupando toda a largura
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -47,34 +53,44 @@ fun MovieListRow(
         colors = CardDefaults.cardColors(containerColor = CineSurface),
         shape = RoundedCornerShape(12.dp)
     ) {
+        // Linha principal: pôster | textos | botão de excluir (opcional)
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Pôster carregado pelo Coil: monta a URL juntando o endereço base do TMDB
+            // (largura 200) ao caminho recebido. Se posterPath for null, nada é carregado.
             AsyncImage(
                 model = posterPath?.let { "https://image.tmdb.org/t/p/w200$it" },
                 contentDescription = title,
                 modifier = Modifier
                     .width(72.dp)
                     .height(108.dp)
+                    // Arredonda os cantos da imagem
                     .clip(RoundedCornerShape(8.dp)),
+                // Crop preenche a área toda, cortando o excesso se necessário
                 contentScale = ContentScale.Crop
             )
+            // Coluna de textos; weight(1f) faz ocupar o espaço restante,
+            // empurrando o botão de excluir para a extremidade direita
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 12.dp)
             ) {
+                // Título em destaque
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
+                // Subtítulo com cor mais discreta
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                // A nota só é exibida se existir e não estiver em branco: estrela dourada + texto
                 if (!ratingLabel.isNullOrBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -91,6 +107,7 @@ fun MovieListRow(
                     }
                 }
             }
+            // Botão de lixeira (vermelho) exibido apenas quando onDelete foi informado
             if (onDelete != null) {
                 IconButton(
                     onClick = onDelete,

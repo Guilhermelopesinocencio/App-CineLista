@@ -15,6 +15,7 @@ import kotlinx.coroutines.tasks.await
  * para a lista pessoal de filmes e séries salvas do usuário autenticado.
  */
 class FirebaseRepository {
+    // Instâncias do Firebase Auth (para saber quem está logado) e do Firestore (banco de dados)
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
@@ -34,28 +35,38 @@ class FirebaseRepository {
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observeSaved(): Flow<List<SavedMovie>> = authState().flatMapLatest { uid ->
         if (uid == null) {
+            // Sem usuário logado: lista vazia
             flowOf(emptyList())
         } else {
             callbackFlow {
                 val reg = db.collection("users").document(uid).collection("movies")
                     .addSnapshotListener { snap, err ->
                         if (err != null) {
+                            // Erro do Firestore: encerra o Flow propagando o erro
                             close(err)
                             return@addSnapshotListener
                         }
+                        // Converte os documentos em objetos SavedMovie e emite a lista
                         trySend(snap?.toObjects(SavedMovie::class.java).orEmpty())
                     }
+                // Remove o listener do Firestore quando o Flow for cancelado
                 awaitClose { reg.remove() }
             }
         }
     }
 
-    /** Referência para a coleção do Firestore do usuário autenticado. */
+    /**
+     * Referência para a coleção do Firestore do usuário autenticado
+     * (users/{uid}/movies). Usa "!!", então só deve ser chamada com usuário logado.
+     */
     private fun userMoviesCollection() = db.collection("users")
         .document(auth.currentUser!!.uid).collection("movies")
 
     /**
      * Salva ou atualiza um filme/série na coleção pessoal do usuário no Firestore.
+     * O ID do filme é usado como ID do documento, então salvar o mesmo filme de novo
+     * sobrescreve o registro existente (sem duplicar). Não faz nada se não houver usuário logado.
+     * É suspend: deve ser chamada a partir de uma coroutine.
      */
     suspend fun save(m: SavedMovie) {
         if (auth.currentUser != null) {
@@ -65,6 +76,8 @@ class FirebaseRepository {
 
     /**
      * Remove um filme/série da coleção pessoal do usuário no Firestore pelo seu ID.
+     * Não faz nada se não houver usuário logado.
+     * É suspend: deve ser chamada a partir de uma coroutine.
      */
     suspend fun remove(id: Int) {
         if (auth.currentUser != null) {

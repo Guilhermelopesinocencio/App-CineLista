@@ -48,6 +48,8 @@ import com.example.aulamobile.ui.theme.CineSurface
 import com.example.aulamobile.ui.theme.CineTextPrimary
 import com.example.aulamobile.ui.theme.CineTextSecondary
 
+// Paleta de cores usada para os "chips" de gênero; as cores são repetidas em ciclo
+// (índice % tamanho da lista) caso haja mais gêneros do que cores
 private val genreChipColors = listOf(
     Color(0xFF3D5A6E),
     Color(0xFF5A4A3A),
@@ -56,6 +58,11 @@ private val genreChipColors = listOf(
     Color(0xFF5C3D3D)
 )
 
+/**
+ * Tela de detalhes de um filme ou série.
+ * Mostra pôster, título, ano, nota, gêneros e sinopse, além do botão para adicionar
+ * o item à lista pessoal ou, se já estiver na lista, o acesso à avaliação/edição.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(
@@ -65,11 +72,16 @@ fun DetailScreen(
     onBack: () -> Unit,
     onReview: () -> Unit
 ) {
+    // Dispara o carregamento dos detalhes ao abrir a tela (e de novo se id ou isSeries mudarem)
     LaunchedEffect(id, isSeries) { vm.loadDetail(id, isSeries) }
 
+    // Filme/série carregado no ViewModel; takeIf garante que seja o item deste id
+    // (evita mostrar dados de um item aberto anteriormente)
     val movie = vm.selected?.takeIf { it.id == id }
     val tvShow = vm.selectedTv?.takeIf { it.id == id }
+    // Lista pessoal do usuário, observada em tempo real
     val list by vm.myList.collectAsState()
+    // Item salvo correspondente a este id (null = ainda não está na lista)
     val saved = list.find { it.id == id }
 
     Box(
@@ -77,27 +89,34 @@ fun DetailScreen(
             .fillMaxSize()
             .background(CineBackground)
     ) {
+        // Enquanto nenhum dado chegou, mostra um indicador de carregamento centralizado
         if (movie == null && tvShow == null) {
             CircularProgressIndicator(
                 color = CineGold,
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
+            // Extrai os dados a exibir. Para cada campo, prioriza a fonte de acordo com o tipo
+            // (série: tvShow primeiro; filme: movie primeiro) e usa a outra como alternativa.
             val title = if (isSeries) (tvShow?.name ?: movie?.title.orEmpty()) else (movie?.title ?: tvShow?.name.orEmpty())
             val posterPath = if (isSeries) (tvShow?.poster_path ?: movie?.poster_path) else (movie?.poster_path ?: tvShow?.poster_path)
             val dateStr = if (isSeries) (tvShow?.first_air_date ?: movie?.release_date) else (movie?.release_date ?: tvShow?.first_air_date)
+            // Ano = 4 primeiros caracteres da data ("AAAA-MM-DD")
             val year = dateStr?.take(4).orEmpty()
             val rating = if (isSeries) (tvShow?.vote_average ?: movie?.vote_average) else (movie?.vote_average ?: tvShow?.vote_average)
+            // Nota com 1 casa decimal e vírgula (ex.: 8,5); "—" se não houver nota
             val ratingText = rating?.let { "%.1f".format(it).replace('.', ',') } ?: "—"
             val overview = if (isSeries) (tvShow?.overview ?: movie?.overview) else (movie?.overview ?: tvShow?.overview)
             val genres = if (isSeries) (tvShow?.genres ?: movie?.genres) else (movie?.genres ?: tvShow?.genres)
 
+            // Conteúdo rolável da tela
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
+                // Botão circular "X" para fechar a tela e voltar
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier
@@ -109,6 +128,7 @@ fun DetailScreen(
 
                 Spacer(Modifier.height(8.dp))
 
+                // Cabeçalho: pôster à esquerda e título + ano à direita
                 Row(modifier = Modifier.fillMaxWidth()) {
                     AsyncImage(
                         model = posterPath?.let { "https://image.tmdb.org/t/p/w342$it" },
@@ -130,6 +150,7 @@ fun DetailScreen(
                             fontWeight = FontWeight.Bold,
                             color = CineTextPrimary
                         )
+                        // O ano só aparece se houver data disponível
                         if (year.isNotBlank()) {
                             Text(
                                 text = year,
@@ -143,11 +164,13 @@ fun DetailScreen(
 
                 Spacer(Modifier.height(20.dp))
 
+                // Linha de ações: caixa da nota (35% da largura) + área do botão da lista (65%)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Caixa com ícone de estrela, a nota média do TMDB e o rótulo "Nota"
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = CineSurface,
@@ -178,6 +201,8 @@ fun DetailScreen(
                     }
 
                     if (saved == null) {
+                        // Item ainda fora da lista: botão dourado que salva o item no Firestore
+                        // via ViewModel; o texto muda conforme seja filme ou série
                         Button(
                             onClick = { vm.saveItem(id = id, isSeries = isSeries) },
                             modifier = Modifier
@@ -196,10 +221,13 @@ fun DetailScreen(
                             )
                         }
                     } else {
+                        // Item já salvo: mostra um botão desabilitado "Na sua lista"
+                        // e, abaixo, o link para avaliar/editar
                         Column(
                             modifier = Modifier.weight(0.65f),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            // Botão apenas informativo (desabilitado)
                             Button(
                                 onClick = { },
                                 enabled = false,
@@ -214,6 +242,7 @@ fun DetailScreen(
                             ) {
                                 Text("Na sua lista")
                             }
+                            // Abre a tela de avaliação/edição do item
                             TextButton(
                                 onClick = onReview,
                                 modifier = Modifier.fillMaxWidth()
@@ -224,12 +253,15 @@ fun DetailScreen(
                     }
                 }
 
+                // Gêneros: só aparecem se a lista existir e não estiver vazia
                 if (!genres.isNullOrEmpty()) {
                     Spacer(Modifier.height(20.dp))
+                    // FlowRow quebra os chips em novas linhas quando não cabem na largura
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Cada gênero vira um chip arredondado; a cor vem da paleta em ciclo
                         genres.forEachIndexed { index, genre ->
                             Surface(
                                 shape = RoundedCornerShape(20.dp),
@@ -246,6 +278,7 @@ fun DetailScreen(
                     }
                 }
 
+                // Seção de sinopse
                 Spacer(Modifier.height(24.dp))
                 Text(
                     text = "Sinopse",
@@ -254,6 +287,7 @@ fun DetailScreen(
                     color = CineTextPrimary
                 )
                 Spacer(Modifier.height(8.dp))
+                // Se a sinopse for nula ou em branco, mostra uma mensagem padrão
                 Text(
                     text = overview?.takeIf { it.isNotBlank() } ?: "Sem sinopse disponível.",
                     style = MaterialTheme.typography.bodyMedium,

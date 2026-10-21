@@ -49,6 +49,8 @@ import com.example.aulamobile.ui.theme.CineGold
 import com.example.aulamobile.ui.theme.CineSurface
 import com.example.aulamobile.ui.theme.CineTextPrimary
 
+// Opções de status disponíveis na tela, como pares (chave interna salva no Firestore, texto exibido).
+// A ordem da lista define a ordem dos "chips" na tela.
 private val statusOptions = listOf(
     "ASSISTINDO" to "Assistindo",
     "REASSISTINDO" to "Reassistindo",
@@ -59,17 +61,28 @@ private val statusOptions = listOf(
     "FAVORITOS" to "Favoritos"
 )
 
+/**
+ * Tela de avaliação e edição de um item (filme ou série) da lista pessoal.
+ * Permite escolher o status (Assistindo, Assistido, Favoritos etc.) e dar uma nota de 0 a 10.
+ * Ao salvar, grava as alterações no Firestore e volta para a tela anterior.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
+    // Lista pessoal observada em tempo real
     val list by vm.myList.collectAsState()
+    // Procura o item pelo ID; se não estiver na lista, sai sem desenhar nada (return)
     val movie = list.find { it.id == id } ?: return
 
+    // Status selecionado na tela, iniciando com o status atual do item.
+    // O status antigo "QUERO_ASSISTIR" é convertido para "VAI_ASSISTIR" (compatibilidade).
+    // O remember(movie.id) reinicia o valor se a tela passar a mostrar outro item.
     var selectedStatus by remember(movie.id) {
         mutableStateOf(
             if (movie.status == "QUERO_ASSISTIR") "VAI_ASSISTIR" else movie.status
         )
     }
+    // Nota selecionada, iniciando com a nota atual do item
     var rating by remember(movie.id) { mutableFloatStateOf(movie.rating) }
 
     Box(
@@ -77,6 +90,7 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
             .fillMaxSize()
             .background(CineBackground)
     ) {
+        // Conteúdo rolável da tela
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -84,11 +98,13 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Cabeçalho: botão fechar | título "Avaliar e Editar" | espaço vazio
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Botão circular "X" que fecha a tela sem salvar
                 IconButton(
                     onClick = onDone,
                     modifier = Modifier
@@ -105,9 +121,11 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
                     color = CineTextPrimary
                 )
 
+                // Espaço do mesmo tamanho do botão fechar, para manter o título centralizado
                 Spacer(Modifier.size(40.dp))
             }
 
+            // Título do filme/série sendo avaliado
             Text(
                 text = movie.title,
                 style = MaterialTheme.typography.headlineSmall,
@@ -116,6 +134,7 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
             )
 
             // Status Selection Section
+            // Seção de escolha do status: um "chip" para cada opção; só um pode estar selecionado
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = "Status no Filme",
@@ -124,6 +143,7 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
                     color = CineGold
                 )
 
+                // FlowRow quebra os chips em novas linhas quando não cabem na largura
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -131,6 +151,8 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
                 ) {
                     statusOptions.forEach { (key, label) ->
                         val isSelected = selectedStatus == key
+                        // Chip: dourado e em negrito quando selecionado; cinza escuro caso contrário.
+                        // Tocar nele define o status selecionado.
                         Surface(
                             shape = RoundedCornerShape(20.dp),
                             color = if (isSelected) CineGold else CineSurface,
@@ -155,6 +177,7 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
             }
 
             // Rating Section
+            // Seção da nota: ícone de estrela + texto com a nota atual e, abaixo, um slider
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -166,6 +189,7 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
                         tint = CineGold,
                         modifier = Modifier.size(20.dp)
                     )
+                    // Nota com 1 casa decimal e vírgula (ex.: 7,5)
                     Text(
                         text = "Sua Nota: ${"%.1f".format(rating).replace('.', ',')}",
                         style = MaterialTheme.typography.titleSmall,
@@ -174,6 +198,8 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
                     )
                 }
 
+                // Slider de 0 a 10. Com steps = 19 há 19 pontos intermediários,
+                // ou seja, a nota avança de 0,5 em 0,5.
                 Slider(
                     value = rating,
                     onValueChange = { rating = it },
@@ -189,6 +215,9 @@ fun ReviewScreen(vm: MovieViewModel, id: Int, onDone: () -> Unit) {
 
             Spacer(Modifier.height(16.dp))
 
+            // Botão "Salvar Alterações": cria uma cópia do item com a nova nota e o novo status,
+            // marca como favorito se o status for "FAVORITOS", grava no Firestore via ViewModel
+            // e fecha a tela
             Button(
                 onClick = {
                     vm.saveReview(

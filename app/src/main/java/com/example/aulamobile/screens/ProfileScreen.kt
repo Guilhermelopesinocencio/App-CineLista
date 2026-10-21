@@ -64,6 +64,7 @@ import com.example.aulamobile.ui.theme.CineTextPrimary
 import com.example.aulamobile.ui.theme.CineTextSecondary
 import com.google.firebase.auth.FirebaseAuth
 
+// Lista de avatares pré-definidos (URLs de imagens) que o usuário pode escolher ao editar o perfil
 private val presetAvatars = listOf(
     "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400",
     "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=400",
@@ -71,6 +72,11 @@ private val presetAvatars = listOf(
     "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400"
 )
 
+/**
+ * Tela de Perfil do usuário.
+ * Mostra foto, nome, e-mail, bio e estatísticas de consumo (filmes e séries assistidos,
+ * horas/dias assistidos e notas médias), além dos botões "Editar perfil" e "Sair da conta".
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileScreen(
@@ -78,21 +84,30 @@ fun ProfileScreen(
     authViewModel: AuthViewModel = viewModel(),
     onLogout: () -> Unit
 ) {
+    // Estado de autenticação e perfil, observados em tempo real
     val authState by authViewModel.state.collectAsState()
+    // Usuário do estado; se for null, tenta pegar direto do FirebaseAuth
     val user = authState.user ?: FirebaseAuth.getInstance().currentUser
     val profile = authState.profile
+    // Lista pessoal (filmes e séries) observada em tempo real
     val list by vm.myList.collectAsState()
 
+    // Controla se o dialog de edição de perfil está aberto
     var showEditDialog by remember { mutableStateOf(false) }
 
+    // Sempre que a lista mudar, pede ao ViewModel para completar a duração
+    // dos itens assistidos que estiverem sem runtime
     LaunchedEffect(list) {
         vm.ensureRuntimesFetched(list)
     }
 
     // Movies stats
+    // Estatísticas de filmes: total, assistidos, tempo total e nota média
     val movieList = list.filter { !it.isSeries }
     val watchedMovies = movieList.filter { it.status == "ASSISTIDO" || it.status == "REASSISTIDO" }
+    // Soma das durações (em minutos) dos filmes assistidos
     val movieMinutes = watchedMovies.sumOf { it.runtime }
+    // Converte minutos em texto: "0h", "45m", "2h" ou "2h 30m"; só recalcula se movieMinutes mudar
     val watchedMovieHoursText = remember(movieMinutes) {
         if (movieMinutes <= 0) "0h"
         else {
@@ -103,13 +118,16 @@ fun ProfileScreen(
             else "${h}h ${m}m"
         }
     }
+    // Nota média considerando apenas os filmes assistidos que têm nota (> 0); formato com vírgula
     val movieRatings = watchedMovies.filter { it.rating > 0 }.map { it.rating }
     val avgMovieRatingText = if (movieRatings.isEmpty()) "0" else "%.1f".format(movieRatings.average()).replace('.', ',')
 
     // Series stats
+    // Estatísticas de séries: mesma lógica, mas o tempo total é exibido em dias
     val seriesList = list.filter { it.isSeries }
     val watchedSeries = seriesList.filter { it.status == "ASSISTIDO" || it.status == "REASSISTIDO" }
     val seriesMinutes = watchedSeries.sumOf { it.runtime }
+    // Converte minutos em dias (ex.: "1,5 dias"); se for menos de 0,1 dia, mostra em horas
     val watchedSeriesDaysText = remember(seriesMinutes) {
         if (seriesMinutes <= 0) "0 dias"
         else {
@@ -119,18 +137,26 @@ fun ProfileScreen(
             else "%.1f dias".format(days).replace('.', ',')
         }
     }
+    // Nota média das séries assistidas que têm nota
     val seriesRatings = watchedSeries.filter { it.rating > 0 }.map { it.rating }
     val avgSeriesRatingText = if (seriesRatings.isEmpty()) "0" else "%.1f".format(seriesRatings.average()).replace('.', ',')
 
+    // Nome exibido, por ordem de prioridade: nome do perfil no Firestore, displayName do Auth,
+    // parte do e-mail antes do "@" (primeira letra maiúscula) ou "Usuário"
     val displayName = profile.name.ifBlank {
         user?.displayName?.takeIf { it.isNotBlank() }
             ?: user?.email?.substringBefore("@")?.replaceFirstChar { it.uppercase() }
             ?: "Usuário"
     }
+    // Foto: usa a do perfil e, se vazia, a do Firebase Auth
     val photoUrl = profile.photoUrl.ifBlank { user?.photoUrl?.toString().orEmpty() }
+    // Bio: texto do perfil ou uma mensagem padrão se estiver vazia
     val bioText = profile.bio.ifBlank { "Nenhuma biografia cadastrada." }
+    // Inicial do nome, usada no avatar quando não há foto
     val initial = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "U"
 
+    // Dialog de edição de perfil: aparece quando showEditDialog é true e há usuário logado.
+    // Ao salvar, atualiza o perfil pelo AuthViewModel e fecha o dialog.
     if (showEditDialog && user != null) {
         EditProfileDialog(
             currentName = displayName,
@@ -144,6 +170,7 @@ fun ProfileScreen(
         )
     }
 
+    // Conteúdo da tela, rolável e centralizado horizontalmente
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -153,6 +180,7 @@ fun ProfileScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Profile Photo
+        // Foto de perfil circular com borda dourada; se não houver foto, mostra a inicial do nome
         Box(
             modifier = Modifier
                 .size(120.dp)
@@ -181,6 +209,7 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        // Nome e e-mail do usuário
         Text(
             text = displayName,
             style = MaterialTheme.typography.headlineSmall,
@@ -197,6 +226,7 @@ fun ProfileScreen(
         Spacer(Modifier.height(12.dp))
 
         // Edit Profile Button
+        // Botão de contorno dourado que abre o dialog de edição
         OutlinedButton(
             onClick = { showEditDialog = true },
             shape = RoundedCornerShape(20.dp),
@@ -215,6 +245,7 @@ fun ProfileScreen(
         Spacer(Modifier.height(24.dp))
 
         // Bio Section
+        // Seção de biografia
         SectionTitle("Bio")
         Text(
             text = bioText,
@@ -226,6 +257,7 @@ fun ProfileScreen(
         Spacer(Modifier.height(24.dp))
 
         // Stats Section
+        // Seção de estatísticas: uma linha (rótulo à esquerda, valor à direita) para cada dado
         SectionTitle("Estatísticas")
         StatRow("Total de filmes", movieList.size.toString())
         StatRow("Filmes Assistidos", watchedMovies.size.toString())
@@ -238,6 +270,7 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(32.dp))
 
+        // Botão de sair da conta (largura total, contorno dourado)
         OutlinedButton(
             onClick = onLogout,
             modifier = Modifier.fillMaxWidth(),
@@ -254,6 +287,10 @@ fun ProfileScreen(
     }
 }
 
+/**
+ * Dialog para editar o perfil: permite escolher um avatar entre os pré-definidos,
+ * alterar o nome de exibição e a biografia.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun EditProfileDialog(
@@ -263,11 +300,14 @@ private fun EditProfileDialog(
     onDismiss: () -> Unit,
     onSave: (name: String, photoUrl: String, bio: String) -> Unit
 ) {
+    // Estados locais dos campos; só são enviados ao salvar.
+    // Se o usuário não tem foto, o primeiro avatar da lista vem selecionado por padrão.
     var name by remember { mutableStateOf(currentName) }
     var selectedPhotoUrl by remember { mutableStateOf(currentPhotoUrl.ifBlank { presetAvatars.first() }) }
     var bio by remember { mutableStateOf(currentBio) }
 
     Dialog(onDismissRequest = onDismiss) {
+        // Cartão arredondado com cor de fundo e borda do tema
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = CineCardBg,
@@ -282,6 +322,7 @@ private fun EditProfileDialog(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Cabeçalho: título e botão "X" para fechar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -299,6 +340,7 @@ private fun EditProfileDialog(
                 }
 
                 // Selected Avatar Preview
+                // Pré-visualização do avatar escolhido (ícone de pessoa se não houver nenhum)
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -323,6 +365,7 @@ private fun EditProfileDialog(
                 }
 
                 // Avatar Selection Row
+                // Seletor de avatares: miniaturas clicáveis; a selecionada ganha borda dourada mais grossa
                 Column {
                     Text(
                         text = "Escolha seu avatar:",
@@ -331,6 +374,7 @@ private fun EditProfileDialog(
                         color = CineGold,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
+                    // FlowRow quebra para a linha seguinte se as miniaturas não couberem
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -347,6 +391,7 @@ private fun EditProfileDialog(
                                         color = if (isSelected) CineGold else Color.Transparent,
                                         shape = CircleShape
                                     )
+                                    // Tocar na miniatura a seleciona
                                     .clickable { selectedPhotoUrl = url }
                             ) {
                                 AsyncImage(
@@ -363,6 +408,7 @@ private fun EditProfileDialog(
                 }
 
                 // Name Input
+                // Campo de nome de exibição
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -380,6 +426,7 @@ private fun EditProfileDialog(
                 )
 
                 // Bio Input
+                // Campo de biografia (2 a 3 linhas)
                 OutlinedTextField(
                     value = bio,
                     onValueChange = { bio = it },
@@ -397,6 +444,7 @@ private fun EditProfileDialog(
                     )
                 )
 
+                // Botões de ação alinhados à direita: Cancelar (fecha) e Salvar (envia os dados)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
@@ -422,6 +470,11 @@ private fun EditProfileDialog(
     }
 }
 
+/**
+ * Título de seção (ex.: "Bio", "Estatísticas"): texto em negrito, largura total
+ * e um pequeno espaço abaixo.
+ * - text: texto do título
+ */
 @Composable
 private fun SectionTitle(text: String) {
     Text(
@@ -435,6 +488,11 @@ private fun SectionTitle(text: String) {
     )
 }
 
+/**
+ * Linha de estatística: rótulo em cinza à esquerda e valor em destaque à direita.
+ * - label: nome da estatística (ex.: "Total de filmes")
+ * - value: valor já formatado como texto (ex.: "12")
+ */
 @Composable
 private fun StatRow(label: String, value: String) {
     Row(

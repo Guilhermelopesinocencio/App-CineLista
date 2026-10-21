@@ -67,17 +67,24 @@ fun HomeScreen(
     onMovie: (Int) -> Unit,
     onSeries: (Int) -> Unit = onMovie
 ) {
+    // Texto digitado no campo de busca (estado local da tela)
     var query by remember { mutableStateOf("") }
+    // Estado de autenticação e perfil, observados em tempo real
     val authState by authViewModel.state.collectAsState()
     val user = authState.user
     val profile = authState.profile
 
+    // Nome exibido na saudação, por ordem de prioridade:
+    // 1) nome do perfil no Firestore; 2) displayName do Firebase Auth;
+    // 3) parte do e-mail antes do "@" com a primeira letra maiúscula; 4) "Usuário"
     val displayName = profile.name.ifBlank {
         user?.displayName?.takeIf { it.isNotBlank() }
             ?: user?.email?.substringBefore("@")?.replaceFirstChar { it.uppercase() }
             ?: "Usuário"
     }
+    // URL da foto: usa a do perfil e, se estiver vazia, a do Firebase Auth
     val photoUrl = profile.photoUrl.ifBlank { user?.photoUrl?.toString().orEmpty() }
+    // Inicial do nome (maiúscula), usada no avatar quando não há foto
     val initial = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "U"
 
     Column(
@@ -87,19 +94,21 @@ fun HomeScreen(
             .padding(horizontal = 16.dp)
     ) {
         Spacer(Modifier.height(12.dp))
-        
+
         // Cabeçalho com nome e avatar do usuário
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Saudação personalizada
             Text(
                 text = "Olá, $displayName!",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = CineTextPrimary
             )
+            // Avatar circular: mostra a foto se existir; senão, a inicial do nome
             Box(
                 modifier = Modifier
                     .size(42.dp)
@@ -124,7 +133,7 @@ fun HomeScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Campo de busca rápido por título
+        // Campo de busca rápido por título; a busca é disparada ao tocar na lupa do teclado
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
@@ -135,6 +144,7 @@ fun HomeScreen(
             },
             singleLine = true,
             shape = RoundedCornerShape(28.dp),
+            // Campo branco, sem borda visível e com texto preto
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
@@ -143,19 +153,27 @@ fun HomeScreen(
                 focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent
             ),
+            // Troca o botão "Enter" do teclado por "Buscar" e chama vm.search ao tocar nele
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { vm.search(query) })
         )
 
         Spacer(Modifier.height(8.dp))
 
+        // Barra de progresso fina enquanto o ViewModel está carregando dados
         if (vm.loading) {
             LinearProgressIndicator(Modifier.fillMaxWidth(), color = CineGold)
         }
 
+        // Mensagem de erro (se houver) na cor de erro do tema
         vm.error?.let {
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 8.dp))
         }
+
+        // A área abaixo muda conforme o estado da busca (3 casos):
+        // 1) há texto e resultados -> lista de resultados
+        // 2) há texto, não está carregando e não há resultados -> mensagem "nenhum resultado"
+        // 3) caso contrário -> carrosséis por gênero
 
         // Resultados da Busca
         if (query.isNotBlank() && vm.results.isNotEmpty()) {
@@ -163,6 +181,8 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
+                // Cada resultado vira uma linha com título, data de lançamento,
+                // nota (formatada com vírgula) e pôster; tocar abre os detalhes
                 items(vm.results, key = { it.id }) { m ->
                     MovieListRow(
                         title = m.title,
@@ -174,21 +194,25 @@ fun HomeScreen(
                 }
             }
         } else if (query.isNotBlank() && !vm.loading && vm.results.isEmpty()) {
+            // Busca concluída sem resultados
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Nenhum resultado encontrado", color = CineTextSecondary)
             }
         } else {
             // Seções em carrosséis por Categoria (Filmes e Séries)
+            // Se ainda não há nenhuma seção carregada e está carregando, mostra um spinner central
             if (vm.genreSections.isEmpty() && vm.genreSectionsTv.isEmpty() && vm.loading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = CineGold)
                 }
             } else {
+                // Lista vertical que contém todos os carrosséis horizontais
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
                     // === SEÇÃO 1: FILMES ===
+                    // Título da seção
                     item {
                         Text(
                             text = "Filmes",
@@ -199,6 +223,7 @@ fun HomeScreen(
                         )
                     }
 
+                    // Para cada gênero: nome do gênero + carrossel horizontal de pôsteres
                     items(vm.genreSections, key = { "movie_sec_${it.title}" }) { section ->
                         Text(
                             text = section.title,
@@ -218,6 +243,7 @@ fun HomeScreen(
                         }
                     }
 
+                    // Divisória entre a seção de filmes e a de séries
                     item {
                         HorizontalDivider(
                             color = CineBorder,
@@ -227,6 +253,7 @@ fun HomeScreen(
                     }
 
                     // === SEÇÃO 2: SÉRIES ===
+                    // Título da seção
                     item {
                         Text(
                             text = "Séries",
@@ -237,6 +264,7 @@ fun HomeScreen(
                         )
                     }
 
+                    // Mesma estrutura dos filmes, mas com séries; tocar chama onSeries
                     items(vm.genreSectionsTv, key = { "tv_sec_${it.title}" }) { section ->
                         Text(
                             text = section.title,
