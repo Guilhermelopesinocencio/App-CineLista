@@ -22,7 +22,7 @@ cd CineLista
 Crie ou abra o arquivo `local.properties` na raiz do projeto e adicione a sua chave do TMDB:
 ```properties
 sdk.dir=SEU_CAMINHO_DO_ANDROID_SDK
-TMDB_KEY=9b6d9eba30f1fcf2d16bebb01e8776f1
+TMDB_KEY=
 ```
 *(Se você tiver sua própria chave do TMDB, substitua pelo seu token).*
 
