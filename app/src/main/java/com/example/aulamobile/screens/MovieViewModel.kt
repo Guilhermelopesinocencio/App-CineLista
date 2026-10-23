@@ -17,11 +17,15 @@ import kotlinx.coroutines.launch
 
 /**
  * Seção de filmes de um gênero na Home (um carrossel).
+ * - title: nome do gênero exibido (ex.: "Ação")
+ * - movies: filmes daquele gênero
  */
 data class GenreSection(val title: String, val movies: List<MovieDto>)
 
 /**
  * Seção de séries de um gênero na Home (um carrossel).
+ * - title: nome do gênero exibido (ex.: "Drama")
+ * - shows: séries daquele gênero
  */
 data class GenreSectionTv(val title: String, val shows: List<TvShowDto>)
 
@@ -46,8 +50,15 @@ class MovieViewModel : ViewModel() {
     var popularTv by mutableStateOf<List<TvShowDto>>(emptyList()); private set
     var genreSectionsTv by mutableStateOf<List<GenreSectionTv>>(emptyList()); private set
 
-    // Resultados da busca e filme/série atualmente abertos na tela de detalhes
+    // Resultados da busca: filmes em results e séries em tvResults
+    // (apenas um dos dois fica preenchido por vez, conforme o tipo da última busca)
     var results by mutableStateOf<List<MovieDto>>(emptyList()); private set
+    var tvResults by mutableStateOf<List<TvShowDto>>(emptyList()); private set
+    // Tipo da última busca realizada: true = séries, false = filmes
+    // (a HomeScreen usa esse valor para decidir qual lista de resultados exibir)
+    var isSearchSeries by mutableStateOf(false); private set
+
+    // Filme ou série atualmente abertos na tela de detalhes
     var selected by mutableStateOf<MovieDto?>(null); private set
     var selectedTv by mutableStateOf<TvShowDto?>(null); private set
 
@@ -112,12 +123,21 @@ class MovieViewModel : ViewModel() {
     }
 
     /**
-     * Busca filmes pelo título e guarda em [results].
+     * Busca filmes ou séries pelo título e guarda em [results] (filmes) ou [tvResults] (séries).
+     * Registra o tipo da busca em [isSearchSeries] e limpa a lista do outro tipo.
      * Se o texto estiver em branco, limpa os resultados sem chamar a API.
      * - q: termo digitado pelo usuário
+     * - isSeries: true = busca séries de TV, false = busca filmes (padrão)
      */
-    fun search(q: String) = launchSafe {
-        results = if (q.isBlank()) emptyList() else api.search(q).results
+    fun search(q: String, isSeries: Boolean = false) = launchSafe {
+        isSearchSeries = isSeries
+        if (isSeries) {
+            tvResults = if (q.isBlank()) emptyList() else api.searchTv(q).results
+            results = emptyList()
+        } else {
+            results = if (q.isBlank()) emptyList() else api.search(q).results
+            tvResults = emptyList()
+        }
     }
 
     /**
